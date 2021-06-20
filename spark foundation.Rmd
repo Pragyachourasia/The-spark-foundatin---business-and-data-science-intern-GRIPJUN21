@@ -1,0 +1,171 @@
+---
+title: "Profile"
+author: "Pragya"
+date: "17/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+**************************************************************************************************
+
+                         ## Prediction using Supervised ML##
+
+#What will be predicted score if a student studies for 9.25 hrs/ day?#
+
+**************************************************************************************************
+
+
+```{r}
+library(caret)
+library(plotly)
+library(dplyr)
+library(ggplot2)
+library(GGally)
+```
+load the package
+
+```{r}
+Profile <- read.csv("C:/Users/Pragya/OneDrive - LA TROBE UNIVERSITY/Desktop/student_scores - student_scores.csv")
+```
+
+Step 1.2: Generate dataset summary
+```{r}
+head(Profile)
+```
+```{r}
+summary(Profile)
+```
+Boxplot 
+```{r}
+boxplot(Profile)
+```
+Clearly their are no outlier in boxplot
+
+
+#Scatter plot the data#
+
+```{r}
+ggplot(Profile, aes(x = Hours, y = Scores)) + geom_point()
+```
+Clearly we can see that thier is positive linerar realationship between hours and scores
+
+
+#correlation#
+
+```{r}
+M <- data.matrix(Profile)
+corrM <- cor(M)
+```
+
+#Find the variables with higher cross-correlation#
+
+```{r}
+highlyCorrM <- findCorrelation(corrM, cutoff=0.5)
+names(Profile)[highlyCorrM]
+
+```
+#Evaluate correlation of the dimension reduced dataset#
+```{r}
+ggcorr(Profile, label=TRUE)
+```
+#Data Partition#
+
+```{r}
+smp_size <- floor(2/3 * nrow(Profile)) 
+set.seed(2)
+
+```
+#Sample the dataset#
+```{r}
+Profile <-
+Profile[sample(nrow(Profile)),]
+```
+
+```{r}
+Profile.train <- Profile[1:smp_size, ] 
+Profile.test <- Profile[(smp_size+1):nrow(Profile), ]
+```
+# Build the predictive model#
+
+```{r}
+formula = Scores ~.
+
+model <- lm( formula = formula, data = Profile.train)
+summary(model)$coefficients
+
+
+as.formula(
+ paste0("y ~ ", round(coefficients(model)[1],2), " + ", 
+ paste(sprintf("%.2f * %s",coefficients(model)[-1],
+ names(coefficients(model)[-1])), 
+ collapse=" + ")
+ )
+)
+
+
+```
+#: Evaluate the predictive model#
+
+```{r}
+Profile.train$predicted.Hours <- predict(model, Profile.train)
+Profile.test$predicted.Hours <- predict(model, Profile.test)
+
+```
+```{r}
+print("Actual Values")
+head(Profile.train$predicted.Hours)
+print("Predicted Values")
+head(Profile.test$predicted.Hours)
+```
+
+```{r}
+Profile <-Profile.test %>%
+ ggplot(aes(Hours,predicted.Hours)) +
+ geom_point(alpha=0.5) +
+ stat_smooth(aes(colour='red')) +
+ xlab('Hours') +
+ ylab('Score')+
+ theme_bw()
+ggplotly(Profile)
+```
+Number of hours 9.25 hours
+the predicted hours will be 93.62
+
+
+R-squared value
+```{r}
+r_squared <- summary(model)$r.squared
+print(paste("R Squared: ", r_squared))
+```
+Root Mean Squared Error (RMSE)
+```{r}
+error <- Profile.test$Hours-Profile.test$predicted.Hours
+rmse <- sqrt(mean(error^2))
+
+print(paste("Root Mean Square Error: ", rmse))
+
+```
+
